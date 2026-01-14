@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TimeFlow — Activity Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="2"/>
+          <path d="M14 8V14L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>TimeFlow</span>
+      </div>
+      
+      <nav class="nav-menu">
+        <a href="#" class="nav-item active" data-view="dashboard">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+          Dashboard
+        </a>
+        <a href="#" class="nav-item" data-view="categories">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+          </svg>
+          Categories
+        </a>
+        <a href="#" class="nav-item" data-view="import">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17,8 12,3 7,8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Import Data
+        </a>
+        <a href="#" class="nav-item" data-view="export">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7,10 12,15 17,10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <button class="clear-data-btn" id="clearDataBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3,6 5,6 21,6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+          Clear All Data
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Dashboard View -->
+      <section class="view-section" id="dashboardView">
+        <header class="view-header">
+          <div class="header-left">
+            <h1>Activity</h1>
+            <div class="date-display" id="dateDisplay">Loading...</div>
+          </div>
+          <div class="header-right">
+            <div class="period-tabs">
+              <button class="period-tab active" data-period="day">Day</button>
+              <button class="period-tab" data-period="week">Week</button>
+              <button class="period-tab" data-period="month">Month</button>
+              <button class="period-tab" data-period="year">Year</button>
+            </div>
+            <div class="date-nav">
+              <button class="date-nav-btn" id="prevPeriod">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="15,18 9,12 15,6"/>
+                </svg>
+              </button>
+              <button class="date-nav-btn" id="todayBtn">Today</button>
+              <button class="date-nav-btn" id="nextPeriod">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="9,18 15,12 9,6"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <!-- No Data State -->
+        <div class="no-data-state" id="noDataState">
+          <div class="no-data-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17,8 12,3 7,8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <h2>No Data Yet</h2>
+          <p>Import your TimeSink and Balance CSV exports to see your activity dashboard.</p>
+          <button class="primary-btn" id="goToImportBtn">Import Data</button>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div class="dashboard-content" id="dashboardContent" style="display: none;">
+          <!-- Timeline (Day view) / Histogram (Other views) -->
+          <div class="chart-section">
+            <h3 class="section-title" id="chartTitle">Timeline</h3>
+            <!-- Focus sessions track (from Balance) -->
+            <div class="focus-track-container" id="focusTrackContainer">
+              <div class="focus-track-label">Sessions</div>
+              <div class="focus-track" id="focusTrack"></div>
+            </div>
+            <div class="timeline-container" id="timelineContainer">
+              <div class="timeline-track" id="timelineTrack"></div>
+              <div class="timeline-labels" id="timelineLabels"></div>
+            </div>
+            <div class="histogram-container" id="histogramContainer" style="display: none;">
+              <canvas id="histogramCanvas"></canvas>
+            </div>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="stats-grid">
+            <!-- Pie Chart -->
+            <div class="stat-card pie-card">
+              <h3 class="section-title">Overview</h3>
+              <div class="pie-chart-container">
+                <canvas id="pieChart"></canvas>
+                <div class="pie-center">
+                  <span class="pie-total" id="pieTotal">0h 0m</span>
+                  <span class="pie-label" id="pieLabel">Total</span>
+                </div>
+              </div>
+              <div class="focus-indicator">
+                <div class="focus-bar">
+                  <div class="focus-fill" id="focusFill"></div>
+                </div>
+                <div class="focus-labels">
+                  <span><span class="focus-dot"></span> Focused: <strong id="focusedTime">0h</strong></span>
+                  <span><span class="other-dot"></span> Other: <strong id="otherTime">0h</strong></span>
+                </div>
+              </div>
+              <!-- Balance session counts -->
+              <div class="session-counts" id="sessionCounts">
+                <div class="session-count focus-sessions" id="focusSessionsCount" title="Click to show on chart">
+                  <span class="session-number">0</span>
+                  <span class="session-label">Focus Sessions</span>
+                </div>
+                <div class="session-count break-sessions" id="breakSessionsCount">
+                  <span class="session-number">0</span>
+                  <span class="session-label">Breaks</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Categories -->
+            <div class="stat-card">
+              <h3 class="section-title">Categories</h3>
+              <div class="category-list" id="categoryList"></div>
+            </div>
+
+            <!-- Apps -->
+            <div class="stat-card">
+              <h3 class="section-title">Apps & Websites</h3>
+              <div class="app-list" id="appList"></div>
+            </div>
+          </div>
+
+          <!-- Balance Projects Section -->
+          <div class="projects-section" id="projectsSection">
+            <h3 class="section-title">Projects (from Balance)</h3>
+            <div class="projects-list" id="projectsList"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Categories View -->
+      <section class="view-section hidden" id="categoriesView">
+        <header class="view-header">
+          <h1>Category Settings</h1>
+          <p class="view-subtitle">Configure which apps belong to each category</p>
+        </header>
+
+        <div class="categories-editor">
+          <div class="categories-grid" id="categoriesGrid"></div>
+          
+          <div class="uncategorized-section">
+            <h3>Uncategorized Apps</h3>
+            <p>Drag apps to categories above, or click to assign</p>
+            <div class="uncategorized-apps" id="uncategorizedApps"></div>
+          </div>
+          
+          <div class="category-actions">
+            <button class="secondary-btn" id="addCategoryBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Add Category
+            </button>
+            <button class="primary-btn" id="saveCategoriesBtn">Save Changes</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Import View -->
+      <section class="view-section hidden" id="importView">
+        <header class="view-header">
+          <h1>Import Data</h1>
+          <p class="view-subtitle">Upload your TimeSink and Balance CSV exports</p>
+        </header>
+
+        <div class="import-grid">
+          <div class="import-card">
+            <div class="import-icon timesink">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12,6 12,12 16,14"/>
+              </svg>
+            </div>
+            <h3>TimeSink Export</h3>
+            <p>App usage data with precise timestamps</p>
+            <div class="drop-zone" id="timesinkDropZone">
+              <input type="file" id="timesinkFile" accept=".csv" hidden>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17,8 12,3 7,8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span>Drop CSV here or click to browse</span>
+            </div>
+            <div class="import-status" id="timesinkStatus"></div>
+          </div>
+
+          <div class="import-card">
+            <div class="import-icon balance">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                <path d="M2 17l10 5 10-5"/>
+                <path d="M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <h3>Balance Export</h3>
+            <p>Manual time tracking with project details</p>
+            <div class="drop-zone" id="balanceDropZone">
+              <input type="file" id="balanceFile" accept=".csv" hidden>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17,8 12,3 7,8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span>Drop CSV here or click to browse</span>
+            </div>
+            <div class="import-status" id="balanceStatus"></div>
+          </div>
+        </div>
+
+        <div class="import-summary" id="importSummary" style="display: none;">
+          <h3>Data Summary</h3>
+          <div class="summary-stats">
+            <div class="summary-stat">
+              <span class="stat-value" id="totalDays">0</span>
+              <span class="stat-label">Days</span>
+            </div>
+            <div class="summary-stat">
+              <span class="stat-value" id="totalApps">0</span>
+              <span class="stat-label">Apps Tracked</span>
+            </div>
+            <div class="summary-stat">
+              <span class="stat-value" id="totalHours">0</span>
+              <span class="stat-label">Total Hours</span>
+            </div>
+            <div class="summary-stat">
+              <span class="stat-value" id="totalProjects">0</span>
+              <span class="stat-label">Projects</span>
+            </div>
+          </div>
+          <button class="primary-btn" id="viewDashboardBtn">View Dashboard</button>
+        </div>
+      </section>
+
+      <!-- Export View -->
+      <section class="view-section hidden" id="exportView">
+        <header class="view-header">
+          <h1>Export Report</h1>
+          <p class="view-subtitle">Download your activity data</p>
+        </header>
+
+        <div class="export-options">
+          <div class="export-card" id="exportJSON">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14,2 14,8 20,8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            <h3>JSON Data</h3>
+            <p>Full data export for backup or processing</p>
+          </div>
+          <div class="export-card" id="exportCSV">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14,2 14,8 20,8"/>
+              <path d="M8 13h2"/>
+              <path d="M8 17h2"/>
+              <path d="M14 13h2"/>
+              <path d="M14 17h2"/>
+            </svg>
+            <h3>CSV Summary</h3>
+            <p>Aggregated daily data in spreadsheet format</p>
+          </div>
+          <div class="export-card" id="exportHTML">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14,2 14,8 20,8"/>
+              <path d="M10 12l-2 4h4l-2 4"/>
+            </svg>
+            <h3>HTML Report</h3>
+            <p>Standalone visual report file</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Category Assignment Modal -->
+  <div class="modal-overlay hidden" id="categoryModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Assign Category</h3>
+        <button class="modal-close" id="closeCategoryModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Select a category for <strong id="appToAssign"></strong>:</p>
+        <div class="category-options" id="categoryOptions"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Category Modal -->
+  <div class="modal-overlay hidden" id="newCategoryModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Category</h3>
+        <button class="modal-close" id="closeNewCategoryModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>
+          Category Name
+          <input type="text" id="newCategoryName" placeholder="e.g., Design">
+        </label>
+        <label>
+          Color
+          <input type="color" id="newCategoryColor" value="#8B5CF6">
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="newCategoryFocused">
+          <span>This is focused work</span>
+        </label>
+        <button class="primary-btn" id="createCategoryBtn">Create Category</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
