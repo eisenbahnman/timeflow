@@ -633,16 +633,17 @@ function getPeriodRange() {
       label = `${dayNames[date.getDay()]}, ${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
       break;
       
-    case 'week':
-      const dayOfWeek = date.getDay();
+    case 'week': {
+      const dayOfWeek = (date.getDay() + 6) % 7; // Monday = 0
       const weekStart = new Date(date);
       weekStart.setDate(date.getDate() - dayOfWeek);
       weekStart.setHours(0, 0, 0, 0);
       start = weekStart;
       end = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-      const weekNum = getWeekNumber(date);
+      const weekNum = getWeekNumberISO(date);
       label = `Week ${weekNum} - ${monthNames[start.getMonth()]} ${start.getDate()}, ${start.getFullYear()}`;
       break;
+    }
       
     case 'month':
       start = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -660,10 +661,17 @@ function getPeriodRange() {
   return { start, end, label };
 }
 
-function getWeekNumber(date) {
-  const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-  const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
-  return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+function getWeekNumberISO(date) {
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+  // Thursday in current week decides the year.
+  target.setDate(target.getDate() + 3 - ((target.getDay() + 6) % 7));
+  const firstThursday = new Date(target.getFullYear(), 0, 4);
+  firstThursday.setHours(0, 0, 0, 0);
+  const weekStart = new Date(firstThursday);
+  weekStart.setDate(firstThursday.getDate() - ((firstThursday.getDay() + 6) % 7));
+  const weekNumber = Math.round((target - weekStart) / 604800000) + 1;
+  return weekNumber;
 }
 
 function navigatePeriod(direction) {
@@ -1043,14 +1051,14 @@ function drawVerticalTimeline(ctx, data, balanceSessions, start, width, height) 
   if (state.currentPeriod === 'week') {
     for (let i = 0; i < 7; i++) {
       const d = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
-      columnKeys.push(d.toISOString().split('T')[0]);
-      labels.push(['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]);
+      columnKeys.push(formatDateKey(d));
+      labels.push(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]);
     }
   } else if (state.currentPeriod === 'month') {
     const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
     for (let i = 1; i <= daysInMonth; i++) {
       const d = new Date(start.getFullYear(), start.getMonth(), i);
-      columnKeys.push(d.toISOString().split('T')[0]);
+      columnKeys.push(formatDateKey(d));
       labels.push(i.toString());
     }
   }
@@ -1069,7 +1077,7 @@ function drawVerticalTimeline(ctx, data, balanceSessions, start, width, height) 
     const category = getAppCategory(entry.app);
     if (state.selectedCategory && category !== state.selectedCategory) continue;
     
-    const key = entry.start.toISOString().split('T')[0];
+    const key = formatDateKey(entry.start);
     if (columnData[key]) {
       columnData[key].push({
         startHour: entry.start.getHours() + entry.start.getMinutes() / 60,
@@ -1081,7 +1089,7 @@ function drawVerticalTimeline(ctx, data, balanceSessions, start, width, height) 
   
   for (const session of balanceSessions) {
     if (!session.start) continue;
-    const key = session.start.toISOString().split('T')[0];
+    const key = formatDateKey(session.start);
     if (sessionBuckets[key]) {
       if (session.isFocus) sessionBuckets[key].focus += 1;
       else sessionBuckets[key].breaks += 1;
@@ -1700,7 +1708,7 @@ function updateImportSummary() {
   
   for (const entry of state.timeSinkData) {
     if (entry.start && entry.start instanceof Date && !isNaN(entry.start)) {
-      days.add(entry.start.toISOString().split('T')[0]);
+      days.add(formatDateKey(entry.start));
     }
     totalHours += entry.duration / (1000 * 60 * 60);
     apps.add(entry.app);
@@ -1708,7 +1716,7 @@ function updateImportSummary() {
   
   for (const session of state.balanceData) {
     if (session.start && session.start instanceof Date && !isNaN(session.start)) {
-      days.add(session.start.toISOString().split('T')[0]);
+      days.add(formatDateKey(session.start));
     }
   }
   
@@ -1737,7 +1745,7 @@ function exportCSV() {
   const dailyData = {};
   
   for (const entry of state.timeSinkData) {
-    const date = entry.start.toISOString().split('T')[0];
+    const date = formatDateKey(entry.start);
     const category = getAppCategory(entry.app);
     
     if (!dailyData[date]) {
@@ -1800,6 +1808,14 @@ function adjustColor(hex, amount) {
   g = Math.max(0, Math.min(255, g));
   b = Math.max(0, Math.min(255, b));
   return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+}
+
+function formatDateKey(date) {
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function formatDuration(ms) {
