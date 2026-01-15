@@ -73,23 +73,87 @@ let state = {
   showBreakOverlay: false   // For showing break counts on histogram
 };
 
+// IndexedDB Storage
+const DB_NAME = 'timeflow_db';
+const DB_VERSION = 1;
+const STORE_NAME = 'timeflow_store';
+const STORAGE_KEY = 'timeflow_data';
+
+let dbPromise = null;
+
+function getDb() {
+  if (dbPromise) return dbPromise;
+
+  dbPromise = new Promise((resolve, reject) => {
+    if (!('indexedDB' in window)) {
+      reject(new Error('IndexedDB not supported'));
+      return;
+    }
+
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+
+  return dbPromise;
+}
+
+async function idbGet(key) {
+  const db = await getDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function idbSet(key, value) {
+  const db = await getDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.put(value, key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function idbDelete(key) {
+  const db = await getDb();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.delete(key);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
-  loadFromStorage();
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadFromStorage();
   setupEventListeners();
   updateView();
 });
 
 // Storage
-function loadFromStorage() {
-  const stored = localStorage.getItem('timeflow_data');
-  if (stored) {
-    const parsed = JSON.parse(stored);
+function applyStoredData(parsed) {
+  if (parsed) {
     // Convert date strings back to Date objects
     state.timeSinkData = (parsed.timeSinkData || []).map(entry => ({
       ...entry,
-      start: new Date(entry.start),
-      end: new Date(entry.end)
+      start: entry.start ? new Date(entry.start) : null,
+      end: entry.end ? new Date(entry.end) : null
     }));
     state.balanceData = (parsed.balanceData || []).map(session => ({
       ...session,
@@ -104,13 +168,62 @@ function loadFromStorage() {
   buildAppToCategoryMap();
 }
 
-function saveToStorage() {
-  localStorage.setItem('timeflow_data', JSON.stringify({
+async function loadFromStorage() {
+  let stored = null;
+  let usedLegacyStorage = false;
+
+  try {
+    stored = await idbGet(STORAGE_KEY);
+  } catch (err) {
+    console.warn('IndexedDB unavailable, falling back to localStorage', err);
+  }
+
+  if (!stored) {
+    const legacy = localStorage.getItem(STORAGE_KEY);
+    if (legacy) {
+      try {
+        stored = JSON.parse(legacy);
+        usedLegacyStorage = true;
+      } catch (err) {
+        console.warn('Failed to parse legacy localStorage data', err);
+      }
+    }
+  }
+
+  if (typeof stored === 'string') {
+    try {
+      stored = JSON.parse(stored);
+    } catch (err) {
+      console.warn('Failed to parse stored data', err);
+      stored = null;
+    }
+  }
+
+  applyStoredData(stored);
+
+  if (usedLegacyStorage && stored) {
+    try {
+      await idbSet(STORAGE_KEY, stored);
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (err) {
+      console.warn('Failed to migrate legacy storage to IndexedDB', err);
+    }
+  }
+}
+
+async function saveToStorage() {
+  const payload = {
     timeSinkData: state.timeSinkData,
     balanceData: state.balanceData,
     categories: state.categories,
     appToCategory: state.appToCategory
-  }));
+  };
+
+  try {
+    await idbSet(STORAGE_KEY, payload);
+  } catch (err) {
+    console.warn('Failed to save to IndexedDB', err);
+  }
 }
 
 function buildAppToCategoryMap() {
@@ -160,9 +273,9 @@ function setupEventListeners() {
   setupFileUpload('balanceDropZone', 'balanceFile', 'balance');
 
   // Clear data
-  document.getElementById('clearDataBtn').addEventListener('click', () => {
+  document.getElementById('clearDataBtn').addEventListener('click', async () => {
     if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
-      localStorage.removeItem('timeflow_data');
+      await idbDelete(STORAGE_KEY);
       state.timeSinkData = [];
       state.balanceData = [];
       state.categories = { ...DEFAULT_CATEGORIES };
